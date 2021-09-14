@@ -12,7 +12,7 @@
   <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk" />
 
   <PropertyGroup>
-    <TargetFramework>netstandard2.0</TargetFramework>
+    <TargetFramework>netstandard2.1</TargetFramework>
     <RootNamespace>NetTopologySuite.IO</RootNamespace>
     <SignAssembly>true</SignAssembly>
   </PropertyGroup>
@@ -32,9 +32,10 @@
     <PackageTags>NTS;SpatiaLite</PackageTags>
   </PropertyGroup>
 
-  <ItemGroup>
-    <PackageReference Include="NetTopologySuite" Version="[2.1.0, 3.0.0-A)" />
-  </ItemGroup>
-
   <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" />
+
+  <ItemGroup>
+    <PackageReference Include="DotSpatial.GeoAPI" Version="1.7.4.3" />
+    <PackageReference Include="DotSpatial.NetTopologySuite" Version="1.14.4" />
+  </ItemGroup>
 </Project>

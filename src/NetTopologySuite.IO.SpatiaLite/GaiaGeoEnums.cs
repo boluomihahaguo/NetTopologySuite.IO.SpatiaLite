@@ -88,7 +88,7 @@ internal static class GaiaGeoEmptyHelper
     }
 
     /// <summary>
-    /// Defines Geometry classes
+    /// Defines IGeometry classes
     /// </summary>
     internal enum GaiaGeoGeometry
     {

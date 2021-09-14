@@ -3,6 +3,7 @@
 
 using System;
 using System.IO;
+using GeoAPI.Geometries;
 using NetTopologySuite.Geometries;
 
 namespace NetTopologySuite.IO
@@ -16,7 +17,7 @@ namespace NetTopologySuite.IO
             //Debug.Assert(geometryTypeFlag != GaiaGeoGeometry.GAIA_UNKNOWN);
             //Debug.Assert(geometryTypeFlag > 0);
 
-            var cflag = ((int)geometryTypeFlag);
+            int cflag = ((int)geometryTypeFlag);
             if (cflag > 1000000)
             {
                 Compressed = true;
@@ -44,7 +45,7 @@ namespace NetTopologySuite.IO
 
         public void SetCoordinateType(bool hasZ, bool hasM, bool useCompression)
         {
-            var cflag = 0;
+            int cflag = 0;
             if (hasZ) cflag += 1000;
             if (hasM) cflag += 2000;
             if (useCompression)
@@ -93,11 +94,11 @@ namespace NetTopologySuite.IO
 
     #region Import
 
-    internal delegate Double GetDoubleFunction(byte[] buffer, ref int offset);
-    internal delegate Double[] GetDoublesFunction(byte[] buffer, ref int offset, int size);
-    internal delegate Single GetSingleFunction(byte[] buffer, ref int offset);
-    internal delegate Single[] GetSinglesFunction(byte[] buffer, ref int offset, int size);
-    internal delegate Int32 GetInt32Function(byte[] buffer, ref int offset);
+    internal delegate double GetDoubleFunction(byte[] buffer, ref int offset);
+    internal delegate double[] GetDoublesFunction(byte[] buffer, ref int offset, int size);
+    internal delegate float GetSingleFunction(byte[] buffer, ref int offset);
+    internal delegate float[] GetSinglesFunction(byte[] buffer, ref int offset, int size);
+    internal delegate int GetInt32Function(byte[] buffer, ref int offset);
 
     internal class GaiaImport : GaiaGeoIO
     {
@@ -141,17 +142,17 @@ namespace NetTopologySuite.IO
 
         #region Double
 
-        private static Double GetUnconvertedDouble(byte[] buffer, ref int offset)
+        private static double GetUnconvertedDouble(byte[] buffer, ref int offset)
         {
-            var val = BitConverter.ToDouble(buffer, offset);
+            double val = BitConverter.ToDouble(buffer, offset);
             offset += 8;
             return val;
         }
 
-        private static Double[] GetUnconvertedDoubles(byte[] buffer, ref int offset, int size)
+        private static double[] GetUnconvertedDoubles(byte[] buffer, ref int offset, int size)
         {
-            var val = new double[size];
-            for (var i = 0; i < size; i++)
+            double[] val = new double[size];
+            for (int i = 0; i < size; i++)
             {
                 val[i] = BitConverter.ToDouble(buffer, offset);
                 offset += 8;
@@ -159,24 +160,24 @@ namespace NetTopologySuite.IO
             return val;
         }
 
-        private static Double GetConvertedDouble(byte[] buffer, ref int offset)
+        private static double GetConvertedDouble(byte[] buffer, ref int offset)
         {
-            var tmp = new byte[8];
+            byte[] tmp = new byte[8];
             Buffer.BlockCopy(buffer, offset, tmp, 0, 8);
             Array.Reverse(tmp);
             offset += 8;
             return BitConverter.ToDouble(tmp, 0);
         }
 
-        private static Double[] GetConvertedDoubles(byte[] buffer, ref int offset, int size)
+        private static double[] GetConvertedDoubles(byte[] buffer, ref int offset, int size)
         {
-            var tmp = new byte[8 * size];
+            byte[] tmp = new byte[8 * size];
             Buffer.BlockCopy(buffer, offset, tmp, 0, size * 8);
             Array.Reverse(tmp);
 
-            var val = new double[size];
-            var j = 0;
-            for (var i = (size - 1) * 8; i >= 0; i -= 8)
+            double[] val = new double[size];
+            int j = 0;
+            for (int i = (size - 1) * 8; i >= 0; i -= 8)
             {
                 val[j++] = BitConverter.ToDouble(tmp, i);
             }
@@ -187,17 +188,17 @@ namespace NetTopologySuite.IO
 
         #region Single
 
-        private static Single GetUnconvertedSingle(byte[] buffer, ref int offset)
+        private static float GetUnconvertedSingle(byte[] buffer, ref int offset)
         {
-            var val = BitConverter.ToSingle(buffer, offset);
+            float val = BitConverter.ToSingle(buffer, offset);
             offset += 4;
             return val;
         }
 
-        private static Single[] GetUnconvertedSingles(byte[] buffer, ref int offset, int size)
+        private static float[] GetUnconvertedSingles(byte[] buffer, ref int offset, int size)
         {
-            var val = new float[size];
-            for (var i = 0; i < size; i++)
+            float[] val = new float[size];
+            for (int i = 0; i < size; i++)
             {
                 val[i] = BitConverter.ToSingle(buffer, offset);
                 offset += 4;
@@ -205,23 +206,23 @@ namespace NetTopologySuite.IO
             return val;
         }
 
-        private static Single GetConvertedSingle(byte[] buffer, ref int offset)
+        private static float GetConvertedSingle(byte[] buffer, ref int offset)
         {
-            var tmp = new byte[4];
+            byte[] tmp = new byte[4];
             Buffer.BlockCopy(buffer, offset, tmp, 0, 4);
             Array.Reverse(tmp);
             offset += 4;
             return BitConverter.ToSingle(tmp, 0);
         }
 
-        private static Single[] GetConvertedSingles(byte[] buffer, ref int offset, int size)
+        private static float[] GetConvertedSingles(byte[] buffer, ref int offset, int size)
         {
-            var tmp = new byte[4 * size];
+            byte[] tmp = new byte[4 * size];
             Buffer.BlockCopy(buffer, offset, tmp, 0, tmp.Length);
             Array.Reverse(tmp);
-            var val = new float[size];
-            var j = 0;
-            for (var i = (size - 1) * 4; i >= 0; i -= 4)
+            float[] val = new float[size];
+            int j = 0;
+            for (int i = (size - 1) * 4; i >= 0; i -= 4)
             {
                 val[j++] = BitConverter.ToSingle(tmp, 0);
                 //offset += 4;
@@ -233,16 +234,16 @@ namespace NetTopologySuite.IO
 
         #region Int32
 
-        private static Int32 GetUnconvertedInt32(byte[] buffer, ref int offset)
+        private static int GetUnconvertedInt32(byte[] buffer, ref int offset)
         {
-            var val = BitConverter.ToInt32(buffer, offset);
+            int val = BitConverter.ToInt32(buffer, offset);
             offset += 4;
             return val;
         }
 
-        private static Int32 GetConvertedInt32(byte[] buffer, ref int offset)
+        private static int GetConvertedInt32(byte[] buffer, ref int offset)
         {
-            var tmp = new byte[4];
+            byte[] tmp = new byte[4];
             Buffer.BlockCopy(buffer, offset, tmp, 0, 4);
             Array.Reverse(tmp);
             offset += 4;
@@ -256,9 +257,9 @@ namespace NetTopologySuite.IO
 
     #region Export
 
-    internal delegate void WriteDoubleFunction(BinaryWriter bw, params Double[] value);
-    internal delegate void WriteInt32Function(BinaryWriter bw, params Int32[] value);
-    internal delegate void WriteSingleFunction(BinaryWriter bw, params Single[] value);
+    internal delegate void WriteDoubleFunction(BinaryWriter bw, params double[] value);
+    internal delegate void WriteInt32Function(BinaryWriter bw, params int[] value);
+    internal delegate void WriteSingleFunction(BinaryWriter bw, params float[] value);
 
     internal class GaiaExport : GaiaGeoIO
     {
@@ -289,17 +290,17 @@ namespace NetTopologySuite.IO
 
         #region Double
 
-        private static void WriteUnconvertedDouble(BinaryWriter bw, params Double[] value)
+        private static void WriteUnconvertedDouble(BinaryWriter bw, params double[] value)
         {
-            foreach (var d in value)
+            foreach (double d in value)
                 bw.Write(d);
         }
 
-        private static void WriteConvertedDouble(BinaryWriter bw, params Double[] value)
+        private static void WriteConvertedDouble(BinaryWriter bw, params double[] value)
         {
-            foreach (var d in value)
+            foreach (double d in value)
             {
-                var tmp = BitConverter.GetBytes(d);
+                byte[] tmp = BitConverter.GetBytes(d);
                 Array.Reverse(tmp);
                 bw.Write(tmp);
             }
@@ -309,17 +310,17 @@ namespace NetTopologySuite.IO
 
         #region Single
 
-        private static void WriteUnconvertedSingle(BinaryWriter bw, params Single[] value)
+        private static void WriteUnconvertedSingle(BinaryWriter bw, params float[] value)
         {
-            foreach (var f in value)
+            foreach (float f in value)
                 bw.Write(f);
         }
 
-        private static void WriteConvertedSingle(BinaryWriter bw, params Single[] value)
+        private static void WriteConvertedSingle(BinaryWriter bw, params float[] value)
         {
-            foreach (var f in value)
+            foreach (float f in value)
             {
-                var tmp = BitConverter.GetBytes(f);
+                byte[] tmp = BitConverter.GetBytes(f);
                 Array.Reverse(tmp);
                 bw.Write(tmp);
             }
@@ -329,17 +330,17 @@ namespace NetTopologySuite.IO
 
         #region Int32
 
-        internal static void WriteUnconvertedInt32(BinaryWriter bw, params Int32[] value)
+        internal static void WriteUnconvertedInt32(BinaryWriter bw, params int[] value)
         {
-            foreach (var i in value)
+            foreach (int i in value)
                 bw.Write(i);
         }
 
-        private static void WriteConvertedInt32(BinaryWriter bw, params Int32[] value)
+        private static void WriteConvertedInt32(BinaryWriter bw, params int[] value)
         {
-            foreach (var i in value)
+            foreach (int i in value)
             {
-                var tmp = BitConverter.GetBytes(i);
+                byte[] tmp = BitConverter.GetBytes(i);
                 Array.Reverse(tmp);
                 bw.Write(tmp);
             }

@@ -3,6 +3,7 @@
 
 using System;
 using System.IO;
+using GeoAPI.Geometries;
 using NetTopologySuite.Geometries;
 
 namespace NetTopologySuite.IO
@@ -12,31 +13,31 @@ namespace NetTopologySuite.IO
     /// </summary>
     public class GaiaGeoReader
     {
-        private GeometryFactory _factory;
-        private readonly PrecisionModel _precisionModel;
-        private readonly CoordinateSequenceFactory _coordinateSequenceFactory;
+        private IGeometryFactory _factory;
+        private readonly IPrecisionModel _precisionModel;
+        private readonly ICoordinateSequenceFilter _coordinateSequenceFactory;
         private Ordinates _handleOrdinates;
 
         /// <summary>
-        /// Creates an instance of this class using the default <see cref="CoordinateSequenceFactory"/> and <see cref="PrecisionModel"/> to use.
+        /// Creates an instance of this class using the default <see cref="ICoordinateSequenceFilter"/> and <see cref="IPrecisionModel"/> to use.
         /// </summary>
         public GaiaGeoReader()
             : this(NtsGeometryServices.Instance.DefaultCoordinateSequenceFactory, NtsGeometryServices.Instance.DefaultPrecisionModel)
         { }
 
         /// <summary>
-        /// Creates an instance of this class using the provided <see cref="CoordinateSequenceFactory"/> and <see cref="PrecisionModel"/> to use.
+        /// Creates an instance of this class using the provided <see cref="ICoordinateSequenceFilter"/> and <see cref="IPrecisionModel"/> to use.
         /// </summary>
-        public GaiaGeoReader(CoordinateSequenceFactory coordinateSequenceFactory, PrecisionModel precisionModel)
+        public GaiaGeoReader(ICoordinateSequenceFactory coordinateSequenceFactory, IPrecisionModel precisionModel)
             : this(coordinateSequenceFactory, precisionModel, Ordinates.XYZM)
         {
         }
 
         /// <summary>
-        /// Creates an instance of this class using the provided <see cref="CoordinateSequenceFactory"/> and <see cref="PrecisionModel"/> to use.
+        /// Creates an instance of this class using the provided <see cref="ICoordinateSequenceFilter"/> and <see cref="IPrecisionModel"/> to use.
         /// Additionally the ordinate values that are to be handled can be set.
         /// </summary>
-        public GaiaGeoReader(CoordinateSequenceFactory coordinateSequenceFactory, PrecisionModel precisionModel, Ordinates handleOrdinates)
+        public GaiaGeoReader(ICoordinateSequenceFilter coordinateSequenceFactory, IPrecisionModel precisionModel, Ordinates handleOrdinates)
         {
             _coordinateSequenceFactory = coordinateSequenceFactory;
             _precisionModel = precisionModel;
@@ -64,12 +65,12 @@ namespace NetTopologySuite.IO
         }
 
         /// <summary>
-        /// Deserializes a <see cref="Geometry"/> from the given byte array.
+        /// Deserializes a <see cref="IGeometry"/> from the given byte array.
         /// </summary>
         /// <param name="blob">The byte array to read the geometry from.</param>
-        /// <returns>The deserialized <see cref="Geometry"/>.</returns>
+        /// <returns>The deserialized <see cref="IGeometry"/>.</returns>
         /// <exception cref="ArgumentNullException">Thrown when <paramref name="blob"/> is <see langword="null"/>.</exception>
-        public Geometry Read(byte[] blob)
+        public IGeometry Read(byte[] blob)
         {
             if (blob == null)
             {
@@ -80,7 +81,7 @@ namespace NetTopologySuite.IO
                 return null;		/* cannot be an internal BLOB WKB geometry */
             if ((GaiaGeoBlobMark)blob[0] != GaiaGeoBlobMark.GAIA_MARK_START)
                 return null;		/* failed to recognize START signature */
-            var size = blob.Length;
+            int size = blob.Length;
             if ((GaiaGeoBlobMark)blob[size - 1] != GaiaGeoBlobMark.GAIA_MARK_END)
                 return null;		/* failed to recognize END signature */
             if ((GaiaGeoBlobMark)blob[38] != GaiaGeoBlobMark.GAIA_MARK_MBR)
@@ -91,8 +92,8 @@ namespace NetTopologySuite.IO
                 return null;
 
             //geo = gaiaAllocGeomColl();
-            var offset = 2;
-            var srid = gaiaImport.GetInt32(blob, ref offset);
+            int offset = 2;
+            int srid = gaiaImport.GetInt32(blob, ref offset);
 
             if (_factory == null || _factory.SRID != srid)
                 _factory = NtsGeometryServices.Instance.CreateGeometryFactory(_precisionModel, srid,
@@ -162,19 +163,19 @@ namespace NetTopologySuite.IO
         }
 
         /// <summary>
-        /// Deserializes a <see cref="Geometry"/> from the given <see cref="Stream"/>.
+        /// Deserializes a <see cref="IGeometry"/> from the given <see cref="Stream"/>.
         /// </summary>
         /// <param name="stream">The <see cref="Stream"/> to read the geometry from.</param>
-        /// <returns>The deserialized <see cref="Geometry"/>.</returns>
+        /// <returns>The deserialized <see cref="IGeometry"/>.</returns>
         /// <exception cref="ArgumentNullException">Thrown when <paramref name="stream"/> is <see langword="null"/>.</exception>
-        public Geometry Read(Stream stream)
+        public IGeometry Read(Stream stream)
         {
             if (stream == null)
             {
                 throw new ArgumentNullException(nameof(stream));
             }
 
-            var buffer = new byte[stream.Length];
+            byte[] buffer = new byte[stream.Length];
             stream.Read(buffer, 0, buffer.Length);
             return Read(buffer);
         }
@@ -205,7 +206,7 @@ namespace NetTopologySuite.IO
 
         private static GaiaGeoGeometry ToBaseGeometryType(GaiaGeoGeometry geometry)
         {
-            var geometryInt = (int)geometry;
+            int geometryInt = (int)geometry;
             if (geometryInt > 1000000) geometryInt -= 1000000;
             if (geometryInt > 3000) geometryInt -= 3000;
             if (geometryInt > 2000) geometryInt -= 2000;
@@ -213,7 +214,7 @@ namespace NetTopologySuite.IO
             return (GaiaGeoGeometry)geometryInt;
         }
 
-        private static Geometry ParseWkbGeometry(GaiaGeoGeometry type, byte[] blob, ref int offset, GeometryFactory factory, GaiaImport gaiaImport)
+        private static IGeometry ParseWkbGeometry(GaiaGeoGeometry type, byte[] blob, ref int offset, IGeometryFactory factory, GaiaImport gaiaImport)
         {
             var readCoordinates = SetReadCoordinatesFunction(gaiaImport, type);
 
@@ -245,7 +246,7 @@ namespace NetTopologySuite.IO
 
         private static GaiaImport SetGaiaGeoParseFunctions(GaiaGeoEndianMarker gaiaGeoEndianMarker, Ordinates handleOrdinates)
         {
-            var conversionNeeded = false;
+            bool conversionNeeded = false;
             switch (gaiaGeoEndianMarker)
             {
                 case GaiaGeoEndianMarker.GAIA_LITTLE_ENDIAN:
@@ -264,17 +265,17 @@ namespace NetTopologySuite.IO
             return GaiaImport.Create(conversionNeeded, handleOrdinates);
         }
 
-        private static Point ParseWkbPoint(byte[] blob, ref int offset, GeometryFactory factory, ReadCoordinatesFunction readCoordinates, GaiaImport gaiaImport)
+        private static IPoint ParseWkbPoint(byte[] blob, ref int offset, IGeometryFactory factory, ReadCoordinatesFunction readCoordinates, GaiaImport gaiaImport)
         {
-            return factory.CreatePoint(readCoordinates(blob, ref offset, 1, gaiaImport, factory.CoordinateSequenceFactory, factory.PrecisionModel));
+            return factory.CreatePoint(readCoordinates(blob, ref offset, 1, gaiaImport, factory.CoordinateSequenceFilter, factory.PrecisionModel));
         }
 
-        private static MultiPoint ParseWkbMultiPoint(byte[] blob, ref int offset, GeometryFactory factory, ReadCoordinatesFunction readCoordinates, GaiaImport gaiaImport)
+        private static MultiPoint ParseWkbMultiPoint(byte[] blob, ref int offset, IGeometryFactory factory, ReadCoordinatesFunction readCoordinates, GaiaImport gaiaImport)
         {
             var getInt32 = gaiaImport.GetInt32;
             var getDouble = gaiaImport.GetDouble;
 
-            var number = getInt32(blob, ref offset);
+            int number = getInt32(blob, ref offset);
 
             int measures = gaiaImport.HasM ? 1 : 0;
             int dimension = 2 + (gaiaImport.HasZ ? 1 : 0) + measures;
@@ -286,12 +287,12 @@ namespace NetTopologySuite.IO
                 coords[i] = coordTemplate.Copy();
             }
 
-            for (var i = 0; i < number; i++)
+            for (int i = 0; i < number; i++)
             {
                 if (blob[offset++] != (byte)GaiaGeoBlobMark.GAIA_MARK_ENTITY)
                     throw new Exception();
 
-                var gt = getInt32(blob, ref offset);
+                int gt = getInt32(blob, ref offset);
                 if (ToBaseGeometryType((GaiaGeoGeometry)gt) != GaiaGeoGeometry.GAIA_POINT)
                     throw new Exception();
 
@@ -305,32 +306,32 @@ namespace NetTopologySuite.IO
             return factory.CreateMultiPointFromCoords(coords);
         }
 
-        private delegate LineString CreateLineStringFunction(CoordinateSequence coordinates);
+        private delegate ILineString CreateLineStringFunction(ICoordinateSequence coordinates);
 
-        private static LineString ParseWkbLineString(byte[] blob, ref int offset, GeometryFactory factory, ReadCoordinatesFunction readCoordinates, GaiaImport gaiaImport)
+        private static ILineString ParseWkbLineString(byte[] blob, ref int offset, IGeometryFactory factory, ReadCoordinatesFunction readCoordinates, GaiaImport gaiaImport)
         {
             return ParseWkbLineString(blob, ref offset, factory, factory.CreateLineString, readCoordinates,
                                       gaiaImport);
         }
 
-        private static LineString ParseWkbLineString(byte[] blob, ref int offset, GeometryFactory factory, CreateLineStringFunction createLineStringFunction, ReadCoordinatesFunction readCoordinates, GaiaImport gaiaImport)
+        private static ILineString ParseWkbLineString(byte[] blob, ref int offset, IGeometryFactory factory, CreateLineStringFunction createLineStringFunction, ReadCoordinatesFunction readCoordinates, GaiaImport gaiaImport)
         {
-            var number = gaiaImport.GetInt32(blob, ref offset);
-            var sequence = readCoordinates(blob, ref offset, number, gaiaImport, factory.CoordinateSequenceFactory,
+            int number = gaiaImport.GetInt32(blob, ref offset);
+            var sequence = readCoordinates(blob, ref offset, number, gaiaImport, factory.CoordinateSequenceFilter,
                                            factory.PrecisionModel);
             return createLineStringFunction(sequence);
         }
 
-        private static MultiLineString ParseWkbMultiLineString(byte[] blob, ref int offset, GeometryFactory factory, ReadCoordinatesFunction readCoordinates, GaiaImport gaiaImport)
+        private static MultiLineString ParseWkbMultiLineString(byte[] blob, ref int offset, IGeometryFactory factory, ReadCoordinatesFunction readCoordinates, GaiaImport gaiaImport)
         {
             int number = gaiaImport.GetInt32(blob, ref offset);
-            var lineStrings = new LineString[number];
-            for (var i = 0; i < number; i++)
+            var lineStrings = new ILineString[number];
+            for (int i = 0; i < number; i++)
             {
                 if (blob[offset++] != (byte)GaiaGeoBlobMark.GAIA_MARK_ENTITY)
                     throw new Exception();
 
-                var gt = gaiaImport.GetInt32(blob, ref offset);
+                int gt = gaiaImport.GetInt32(blob, ref offset);
                 if (ToBaseGeometryType((GaiaGeoGeometry)gt) != GaiaGeoGeometry.GAIA_LINESTRING)
                     throw new Exception();
 
@@ -342,27 +343,27 @@ namespace NetTopologySuite.IO
             return factory.CreateMultiLineString(lineStrings);
         }
 
-        private static Polygon ParseWkbPolygon(byte[] blob, ref int offset, GeometryFactory factory, ReadCoordinatesFunction readCoordinates, GaiaImport gaiaImport)
+        private static IPolygon ParseWkbPolygon(byte[] blob, ref int offset, IGeometryFactory factory, ReadCoordinatesFunction readCoordinates, GaiaImport gaiaImport)
         {
-            var number = gaiaImport.GetInt32(blob, ref offset) - 1;
+            int number = gaiaImport.GetInt32(blob, ref offset) - 1;
             var shell = (LinearRing)ParseWkbLineString(blob, ref offset, factory, factory.CreateLinearRing, readCoordinates, gaiaImport);
             var holes = new LinearRing[number];
-            for (var i = 0; i < number; i++)
+            for (int i = 0; i < number; i++)
                 holes[i] = (LinearRing)ParseWkbLineString(blob, ref offset, factory, factory.CreateLinearRing, readCoordinates, gaiaImport);
 
             return factory.CreatePolygon(shell, holes);
         }
 
-        private static Geometry ParseWkbMultiPolygon(byte[] blob, ref int offset, GeometryFactory factory, ReadCoordinatesFunction readCoordinates, GaiaImport gaiaImport)
+        private static IGeometry ParseWkbMultiPolygon(byte[] blob, ref int offset, IGeometryFactory factory, ReadCoordinatesFunction readCoordinates, GaiaImport gaiaImport)
         {
-            var number = gaiaImport.GetInt32(blob, ref offset);
-            var polygons = new Polygon[number];
-            for (var i = 0; i < number; i++)
+            int number = gaiaImport.GetInt32(blob, ref offset);
+            var polygons = new IPolygon[number];
+            for (int i = 0; i < number; i++)
             {
                 if (blob[offset++] != (byte)GaiaGeoBlobMark.GAIA_MARK_ENTITY)
                     throw new Exception();
 
-                var gt = gaiaImport.GetInt32(blob, ref offset);
+                int gt = gaiaImport.GetInt32(blob, ref offset);
                 if (ToBaseGeometryType((GaiaGeoGeometry)gt) != GaiaGeoGeometry.GAIA_POLYGON)
                     throw new Exception();
 
@@ -375,11 +376,11 @@ namespace NetTopologySuite.IO
             return factory.CreateMultiPolygon(polygons);
         }
 
-        private static GeometryCollection ParseWkbGeometryCollection(byte[] blob, ref int offset, GeometryFactory factory, GaiaImport gaiaImport)
+        private static IGeometryCollection ParseWkbGeometryCollection(byte[] blob, ref int offset, IGeometryFactory factory, GaiaImport gaiaImport)
         {
-            var number = gaiaImport.GetInt32(blob, ref offset);
-            var geometries = new Geometry[number];
-            for (var i = 0; i < number; i++)
+            int number = gaiaImport.GetInt32(blob, ref offset);
+            var geometries = new IGeometry[number];
+            for (int i = 0; i < number; i++)
             {
                 if (blob[offset++] != (byte)GaiaGeoBlobMark.GAIA_MARK_ENTITY)
                     throw new Exception();
@@ -389,14 +390,14 @@ namespace NetTopologySuite.IO
             return factory.CreateGeometryCollection(geometries);
         }
 
-        private delegate CoordinateSequence ReadCoordinatesFunction(byte[] buffer, ref int offset, int number, GaiaImport import, CoordinateSequenceFactory factory, PrecisionModel precisionModel);
+        private delegate ICoordinateSequence ReadCoordinatesFunction(byte[] buffer, ref int offset, int number, GaiaImport import, ICoordinateSequenceFilter factory, IPrecisionModel precisionModel);
 
-        private static CoordinateSequence ReadXY(byte[] buffer, ref int offset, int number, GaiaImport import, CoordinateSequenceFactory factory, PrecisionModel precisionModel)
+        private static ICoordinateSequence ReadXY(byte[] buffer, ref int offset, int number, GaiaImport import, ICoordinateSequenceFilter factory, IPrecisionModel precisionModel)
         {
-            var ordinateValues = import.GetDoubles(buffer, ref offset, number * 2);
+            double[] ordinateValues = import.GetDoubles(buffer, ref offset, number * 2);
             var ret = factory.Create(number, Ordinates.XY);
-            var j = 0;
-            for (var i = 0; i < number; i++)
+            int j = 0;
+            for (int i = 0; i < number; i++)
             {
                 ret.SetOrdinate(i, Ordinate.X, precisionModel.MakePrecise(ordinateValues[j++]));
                 ret.SetOrdinate(i, Ordinate.Y, precisionModel.MakePrecise(ordinateValues[j++]));
@@ -404,13 +405,13 @@ namespace NetTopologySuite.IO
             return ret;
         }
 
-        private static CoordinateSequence ReadXYZ(byte[] buffer, ref int offset, int number, GaiaImport import, CoordinateSequenceFactory factory, PrecisionModel precisionModel)
+        private static ICoordinateSequence ReadXYZ(byte[] buffer, ref int offset, int number, GaiaImport import, ICoordinateSequenceFilter factory, IPrecisionModel precisionModel)
         {
-            var ordinateValues = import.GetDoubles(buffer, ref offset, number * 3);
+            double[] ordinateValues = import.GetDoubles(buffer, ref offset, number * 3);
             var ret = factory.Create(number, import.HandleOrdinates);
-            var handleZ = (ret.Ordinates & Ordinates.Z) == Ordinates.Z;
-            var j = 0;
-            for (var i = 0; i < number; i++)
+            bool handleZ = (ret.Ordinates & Ordinates.Z) == Ordinates.Z;
+            int j = 0;
+            for (int i = 0; i < number; i++)
             {
                 ret.SetOrdinate(i, Ordinate.X, precisionModel.MakePrecise(ordinateValues[j++]));
                 ret.SetOrdinate(i, Ordinate.Y, precisionModel.MakePrecise(ordinateValues[j++]));
@@ -420,13 +421,13 @@ namespace NetTopologySuite.IO
             return ret;
         }
 
-        private static CoordinateSequence ReadXYM(byte[] buffer, ref int offset, int number, GaiaImport import, CoordinateSequenceFactory factory, PrecisionModel precisionModel)
+        private static ICoordinateSequence ReadXYM(byte[] buffer, ref int offset, int number, GaiaImport import, ICoordinateSequenceFilter factory, IPrecisionModel precisionModel)
         {
-            var ordinateValues = import.GetDoubles(buffer, ref offset, number * 3);
+            double[] ordinateValues = import.GetDoubles(buffer, ref offset, number * 3);
             var ret = factory.Create(number, import.HandleOrdinates);
-            var handleM = (ret.Ordinates & Ordinates.M) == Ordinates.M;
-            var j = 0;
-            for (var i = 0; i < number; i++)
+            bool handleM = (ret.Ordinates & Ordinates.M) == Ordinates.M;
+            int j = 0;
+            for (int i = 0; i < number; i++)
             {
                 ret.SetOrdinate(i, Ordinate.X, precisionModel.MakePrecise(ordinateValues[j++]));
                 ret.SetOrdinate(i, Ordinate.Y, precisionModel.MakePrecise(ordinateValues[j++]));
@@ -436,14 +437,14 @@ namespace NetTopologySuite.IO
             return ret;
         }
 
-        private static CoordinateSequence ReadXYZM(byte[] buffer, ref int offset, int number, GaiaImport import, CoordinateSequenceFactory factory, PrecisionModel precisionModel)
+        private static ICoordinateSequence ReadXYZM(byte[] buffer, ref int offset, int number, GaiaImport import, ICoordinateSequenceFilter factory, IPrecisionModel precisionModel)
         {
-            var ordinateValues = import.GetDoubles(buffer, ref offset, number * 4);
+            double[] ordinateValues = import.GetDoubles(buffer, ref offset, number * 4);
             var ret = factory.Create(number, import.HandleOrdinates);
-            var handleZ = (ret.Ordinates & Ordinates.Z) == Ordinates.Z;
-            var handleM = (ret.Ordinates & Ordinates.M) == Ordinates.M;
-            var j = 0;
-            for (var i = 0; i < number; i++)
+            bool handleZ = (ret.Ordinates & Ordinates.Z) == Ordinates.Z;
+            bool handleM = (ret.Ordinates & Ordinates.M) == Ordinates.M;
+            int j = 0;
+            for (int i = 0; i < number; i++)
             {
                 ret.SetOrdinate(i, Ordinate.X, precisionModel.MakePrecise(ordinateValues[j++]));
                 ret.SetOrdinate(i, Ordinate.Y, precisionModel.MakePrecise(ordinateValues[j++]));
@@ -455,21 +456,21 @@ namespace NetTopologySuite.IO
             return ret;
         }
 
-        private static CoordinateSequence ReadCompressedXY(byte[] buffer, ref int offset, int number, GaiaImport import, CoordinateSequenceFactory factory, PrecisionModel precisionModel)
+        private static ICoordinateSequence ReadCompressedXY(byte[] buffer, ref int offset, int number, GaiaImport import, ICoordinateSequenceFilter factory, IPrecisionModel precisionModel)
         {
-            var startOrdinateValues = import.GetDoubles(buffer, ref offset, 2);
+            double[] startOrdinateValues = import.GetDoubles(buffer, ref offset, 2);
             var ret = factory.Create(number, import.HandleOrdinates);
 
-            var x = startOrdinateValues[0];
-            var y = startOrdinateValues[1];
+            double x = startOrdinateValues[0];
+            double y = startOrdinateValues[1];
             ret.SetOrdinate(0, Ordinate.X, precisionModel.MakePrecise(x));
             ret.SetOrdinate(0, Ordinate.Y, precisionModel.MakePrecise(y));
 
             if (number == 1) return ret;
 
-            var ordinateValues = import.GetSingles(buffer, ref offset, (number - 2) * 2);
+            float[] ordinateValues = import.GetSingles(buffer, ref offset, (number - 2) * 2);
 
-            var j = 0;
+            int j = 0;
             int i;
             for (i = 1; i < number - 1; i++)
             {
@@ -486,25 +487,25 @@ namespace NetTopologySuite.IO
             return ret;
         }
 
-        private static CoordinateSequence ReadCompressedXYZ(byte[] buffer, ref int offset, int number, GaiaImport import, CoordinateSequenceFactory factory, PrecisionModel precisionModel)
+        private static ICoordinateSequence ReadCompressedXYZ(byte[] buffer, ref int offset, int number, GaiaImport import, ICoordinateSequenceFilter factory, IPrecisionModel precisionModel)
         {
-            var startOrdinateValues = import.GetDoubles(buffer, ref offset, 3);
+            double[] startOrdinateValues = import.GetDoubles(buffer, ref offset, 3);
             var ret = factory.Create(number, Ordinates.XYZ);
 
-            var handleZ = (ret.Ordinates & Ordinates.Z) == Ordinates.Z;
+            bool handleZ = (ret.Ordinates & Ordinates.Z) == Ordinates.Z;
 
-            var x = startOrdinateValues[0];
+            double x = startOrdinateValues[0];
             ret.SetOrdinate(0, Ordinate.X, precisionModel.MakePrecise(x));
-            var y = startOrdinateValues[1];
+            double y = startOrdinateValues[1];
             ret.SetOrdinate(0, Ordinate.Y, precisionModel.MakePrecise(y));
-            var z = handleZ ? startOrdinateValues[2] : Coordinate.NullOrdinate;
+            double z = handleZ ? startOrdinateValues[2] : Coordinate.NullOrdinate;
             ret.SetOrdinate(0, Ordinate.Z, z);
 
             if (number == 1) return ret;
 
-            var ordinateValues = import.GetSingles(buffer, ref offset, (number - 2) * 3);
+            float[] ordinateValues = import.GetSingles(buffer, ref offset, (number - 2) * 3);
 
-            var j = 0;
+            int j = 0;
             int i;
             for (i = 1; i < number - 1; i++)
             {
@@ -524,25 +525,25 @@ namespace NetTopologySuite.IO
             return ret;
         }
 
-        private static CoordinateSequence ReadCompressedXYM(byte[] buffer, ref int offset, int number, GaiaImport import, CoordinateSequenceFactory factory, PrecisionModel precisionModel)
+        private static ICoordinateSequence ReadCompressedXYM(byte[] buffer, ref int offset, int number, GaiaImport import, ICoordinateSequenceFilter factory, IPrecisionModel precisionModel)
         {
-            var startOrdinateValues = import.GetDoubles(buffer, ref offset, 3);
+            double[] startOrdinateValues = import.GetDoubles(buffer, ref offset, 3);
             var ret = factory.Create(number, Ordinates.XYM);
 
-            var handleM = (ret.Ordinates & Ordinates.M) == Ordinates.M;
+            bool handleM = (ret.Ordinates & Ordinates.M) == Ordinates.M;
 
-            var x = startOrdinateValues[0];
+            double x = startOrdinateValues[0];
             ret.SetOrdinate(0, Ordinate.X, precisionModel.MakePrecise(x));
-            var y = startOrdinateValues[1];
+            double y = startOrdinateValues[1];
             ret.SetOrdinate(0, Ordinate.Y, precisionModel.MakePrecise(y));
-            var m = handleM ? startOrdinateValues[2] : Coordinate.NullOrdinate;
+            double m = handleM ? startOrdinateValues[2] : Coordinate.NullOrdinate;
             ret.SetOrdinate(0, Ordinate.M, m);
 
             if (number == 1) return ret;
 
-            var ordinateValues = import.GetSingles(buffer, ref offset, (number - 2) * 3);
+            float[] ordinateValues = import.GetSingles(buffer, ref offset, (number - 2) * 3);
 
-            var j = 0;
+            int j = 0;
             int i;
             for (i = 1; i < number - 1; i++)
             {
@@ -562,28 +563,28 @@ namespace NetTopologySuite.IO
             return ret;
         }
 
-        private static CoordinateSequence ReadCompressedXYZM(byte[] buffer, ref int offset, int number, GaiaImport import, CoordinateSequenceFactory factory, PrecisionModel precisionModel)
+        private static ICoordinateSequence ReadCompressedXYZM(byte[] buffer, ref int offset, int number, GaiaImport import, ICoordinateSequenceFilter factory, IPrecisionModel precisionModel)
         {
-            var startOrdinateValues = import.GetDoubles(buffer, ref offset, 4);
+            double[] startOrdinateValues = import.GetDoubles(buffer, ref offset, 4);
             var ret = factory.Create(number, Ordinates.XYM);
 
-            var handleZ = (ret.Ordinates & Ordinates.Z) == Ordinates.Z;
-            var handleM = (ret.Ordinates & Ordinates.M) == Ordinates.M;
+            bool handleZ = (ret.Ordinates & Ordinates.Z) == Ordinates.Z;
+            bool handleM = (ret.Ordinates & Ordinates.M) == Ordinates.M;
 
-            var x = startOrdinateValues[0];
+            double x = startOrdinateValues[0];
             ret.SetOrdinate(0, Ordinate.X, precisionModel.MakePrecise(x));
-            var y = startOrdinateValues[1];
+            double y = startOrdinateValues[1];
             ret.SetOrdinate(0, Ordinate.Y, precisionModel.MakePrecise(y));
-            var z = handleZ ? startOrdinateValues[2] : Coordinate.NullOrdinate;
+            double z = handleZ ? startOrdinateValues[2] : Coordinate.NullOrdinate;
             ret.SetOrdinate(0, Ordinate.Z, z);
-            var m = handleM ? startOrdinateValues[3] : Coordinate.NullOrdinate;
+            double m = handleM ? startOrdinateValues[3] : Coordinate.NullOrdinate;
             ret.SetOrdinate(0, Ordinate.M, m);
 
             if (number == 1) return ret;
 
-            var ordinateValues = import.GetSingles(buffer, ref offset, (number - 2) * 4);
+            float[] ordinateValues = import.GetSingles(buffer, ref offset, (number - 2) * 4);
 
-            var j = 0;
+            int j = 0;
             int i;
             for (i = 1; i < number - 1; i++)
             {
